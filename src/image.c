@@ -4,11 +4,78 @@
 #include "cuda.h"
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+ 
+#define KEY 81
+#define SEND_BUFFSIZE 3072
+#define LABELNAME_SIZE 256
+#define DETECTEDOBJECT_MAX 64 
+
+
+typedef struct msgbuf {
+        unsigned long mtype;
+        char mtext[SEND_BUFFSIZE];      /* message text */
+}MSGBUF;
+
+static int msgid = 0;
+static bool initObject = false;
+//static int frame_counf = 0;
+
+typedef struct DetectedObject{
+    int left;
+    int right;
+    int top;
+    int bottom;
+    char labelName[LABELNAME_SIZE];
+} DETECTEDOBJECT;
+
+static DETECTEDOBJECT detectedObjectArray[DETECTEDOBJECT_MAX];
+static int detectedObjectNum = 0;
+
+
+
+static void send_to_midiserver()
+{
+    printf("send_to_midiserver\n");
+
+    char cmd_str[SEND_BUFFSIZE];
+    MSGBUF sndbuf;
+
+    if(initObject == false){
+        return;
+    }
+
+    cmd_str[0] = '\0';
+    memset(&sndbuf, sizeof(sndbuf), 0);
+    sndbuf.mtype = 1;
+
+    int i = 0;
+    for(i = 0; i < detectedObjectNum; ++i){
+        char tmpstr[1024];
+        sprintf(tmpstr, "%s,%d,%d,%d,%d,", detectedObjectArray[i].labelName, detectedObjectArray[i].left, detectedObjectArray[i].top, detectedObjectArray[i].right, detectedObjectArray[i].bottom);
+        strcat(cmd_str, tmpstr);    
+    }
+
+
+    strcpy(sndbuf.mtext, cmd_str);
+    int rc = msgsnd(msgid, &sndbuf ,strlen(cmd_str), 0 ); 
+    printf("%s\n", cmd_str);
+    printf("rc:%d\n", rc);
+
+}
+
 
 int windows = 0;
 
@@ -240,6 +307,17 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
 {
     int i,j;
 
+    if(initObject == false){
+        initObject = true;
+
+        msgid = msgget(KEY, IPC_CREAT | 0660 );
+
+    }
+
+    detectedObjectNum = 0;
+    memset(detectedObjectArray, 0, sizeof(DETECTEDOBJECT) * DETECTEDOBJECT_MAX);
+
+
     for(i = 0; i < num; ++i){
         char labelstr[4096] = {0};
         int class = -1;
@@ -290,6 +368,15 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
 
+            if(detectedObjectNum < DETECTEDOBJECT_MAX){
+                detectedObjectArray[detectedObjectNum].left = left;
+                detectedObjectArray[detectedObjectNum].right = right;
+                detectedObjectArray[detectedObjectNum].top = top;
+                detectedObjectArray[detectedObjectNum].bottom = bot;
+                strcpy(detectedObjectArray[detectedObjectNum].labelName, labelstr);
+                ++detectedObjectNum;
+            }
+
             draw_box_width(im, left, top, right, bot, width, red, green, blue);
             if (alphabet) {
                 image label = get_label(alphabet, labelstr, (im.h*.03));
@@ -307,6 +394,8 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             }
         }
     }
+
+    send_to_midiserver();
 }
 
 void transpose_image(image im)
