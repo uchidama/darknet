@@ -24,7 +24,7 @@ class DetectedObject():
 def parse_receive_data(receive_str):
     ret_array = []
 
-    arr = receive_str.split(",")
+    arr = receive_str.split(";")
     
     d = None
     i = 0
@@ -137,6 +137,7 @@ if __name__ == '__main__':
             mq = sysv_ipc.MessageQueue(KEY)
             print("id:", mq.id)
             print("ready to receive messages.")
+            #device_id = int(args['device'])
             while True:
                 mtext, mtype = mq.receive(type=1)
                 print(mtext.decode("utf-8"))

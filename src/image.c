@@ -11,13 +11,13 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <ctype.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
- 
 #define KEY 81
 #define SEND_BUFFSIZE 3072
 #define LABELNAME_SIZE 256
@@ -57,22 +57,49 @@ static void send_to_midiserver()
         return;
     }
 
-    cmd_str[0] = '\0';
+    memset(cmd_str, SEND_BUFFSIZE, 0);
     memset(&sndbuf, sizeof(sndbuf), 0);
     sndbuf.mtype = 1;
 
     int i = 0;
     for(i = 0; i < detectedObjectNum; ++i){
         char tmpstr[1024];
-        sprintf(tmpstr, "%s,%d,%d,%d,%d,", detectedObjectArray[i].labelName, detectedObjectArray[i].left, detectedObjectArray[i].top, detectedObjectArray[i].right, detectedObjectArray[i].bottom);
-        strcat(cmd_str, tmpstr);    
+        memset(tmpstr, sizeof(tmpstr), 0);
+        sprintf(tmpstr, "%s;%d;%d;%d;%d;", detectedObjectArray[i].labelName, detectedObjectArray[i].left, detectedObjectArray[i].top, detectedObjectArray[i].right, detectedObjectArray[i].bottom);
+        printf("labelName:%s\n", detectedObjectArray[i].labelName);
+        printf("tmpstr:%s\n", tmpstr);
+        strcat(cmd_str, tmpstr);
     }
 
 
     strcpy(sndbuf.mtext, cmd_str);
     int rc = msgsnd(msgid, &sndbuf ,strlen(cmd_str), 0 ); 
-    printf("%s\n", cmd_str);
+    printf("\ncmd_str:%s\n", cmd_str);
     printf("rc:%d\n", rc);
+    printf("detectedObjectNum:%d\n", detectedObjectNum);
+
+    // check code
+    if(strlen(cmd_str) == 0){
+        return;
+    }
+
+    char * param = strtok(cmd_str,";");
+    i = 0;
+    while(param){
+        
+        if( i == 1 ){
+
+            if( isdigit(*param) == 0 ){
+                printf("error!%s\n", param);
+                exit(1);
+            }
+        
+        }
+        printf("%s\n", param);
+
+        param = strtok(NULL,",");
+        ++i;
+    }
 
 }
 
