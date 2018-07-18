@@ -44,7 +44,8 @@ typedef struct DetectedObject{
 static DETECTEDOBJECT detectedObjectArray[DETECTEDOBJECT_MAX];
 static int detectedObjectNum = 0;
 
-
+static int SCREEN_WIDTH = 0;
+static int SCREEN_HEIGHT = 0;
 
 static void send_to_midiserver()
 {
@@ -60,6 +61,8 @@ static void send_to_midiserver()
     memset(cmd_str, SEND_BUFFSIZE, 0);
     memset(&sndbuf, sizeof(sndbuf), 0);
     sndbuf.mtype = 1;
+
+    sprintf(cmd_str, "%d;%d;", SCREEN_WIDTH, SCREEN_HEIGHT);
 
     int i = 0;
     for(i = 0; i < detectedObjectNum; ++i){
@@ -77,6 +80,8 @@ static void send_to_midiserver()
     printf("\ncmd_str:%s\n", cmd_str);
     printf("rc:%d\n", rc);
     printf("detectedObjectNum:%d\n", detectedObjectNum);
+    printf("SCREEN_WIDTH:%d\n", SCREEN_WIDTH);
+    printf("SCREEN_HEIGHT:%d\n", SCREEN_HEIGHT);
 
     // check code
     if(strlen(cmd_str) == 0){
@@ -394,6 +399,9 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             if(right > im.w-1) right = im.w-1;
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
+
+            SCREEN_WIDTH = im.w;
+            SCREEN_HEIGHT = im.h;
 
             if(detectedObjectNum < DETECTEDOBJECT_MAX){
                 detectedObjectArray[detectedObjectNum].left = left;

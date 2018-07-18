@@ -30,6 +30,11 @@ def parse_receive_data(receive_str):
     i = 0
     num = 5
 
+    screen_w = int(arr[0])
+    screen_h = int(arr[1])
+
+    del arr[:2]
+
     for a in arr:
         if i%num == 0:
             d = DetectedObject()
@@ -37,16 +42,16 @@ def parse_receive_data(receive_str):
         elif i%num == 1:
             d.left = int(a)
         elif i%num == 2:
-            d.right = int(a)
-        elif i%num == 3:
             d.top = int(a)
+        elif i%num == 3:
+            d.right = int(a)
         elif i%num == 4:
             d.bottom = int(a)
             ret_array.append(d)
         i += 1
 
 
-    return ret_array
+    return (ret_array, screen_w, screen_h )
 
 
 
@@ -138,17 +143,37 @@ if __name__ == '__main__':
             print("id:", mq.id)
             print("ready to receive messages.")
             #device_id = int(args['device'])
+
             while True:
                 mtext, mtype = mq.receive(type=1)
                 print(mtext.decode("utf-8"))
-                ret = parse_receive_data(mtext.decode("utf-8"))
-                #print(ret)
+                ret, screen_w, screen_h = parse_receive_data(mtext.decode("utf-8"))
+                print("SCREEN_WIDTH:", screen_w)
+                print("SCREEN_HEIGHT:", screen_h)
+
+                MIDI_ID = 1
+                CC_NO = 20
 
                 for r in ret:
                     print(r.label_name)
+                    center_x = (r.left + r.right)/2
+                    center_y = (r.top + r.bottom)/2
+                    #center_x = r.left
+                    #center_y = r.top
+
                     if r.label_name == "cell phone":
                         print("cell phone find")
-                        midi_send( 1, [0x90, 40 + round(r.left/20), 100])
+                        print("center_x:", center_x)
+                        print("center_y:", center_y)
+                        MIDI_NOTE = int(40.0 + round(48.0*(center_x/screen_w)))
+                        CC_DATA = int(round(127*(1.0-float(center_y)/float(screen_h))))
+                        print("MIDI_NOTE:", MIDI_NOTE)
+                        print("CC_DATA:", CC_DATA)
+
+                        midi_send( MIDI_ID, [0x90, MIDI_NOTE, MIDI_NOTE])
+                        # CC
+                        if CC_DATA >= 0:
+                            midi_send( MIDI_ID, [185, CC_NO, CC_DATA])
 
 
             # Write command, send data
