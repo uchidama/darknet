@@ -8,6 +8,7 @@ import time
 
 import rtmidi
 import sysv_ipc
+import math
 
 KEY = 81
 
@@ -83,6 +84,36 @@ def midi_send(device_id, data_array):
     del outport
 
 
+'''
+'''
+def get_midi_cc(max_point, point, margin, cc_min = 0, cc_max = 127 ):
+    
+    if point <= margin:
+        return cc_max
+    if point >= (max_point - margin):
+        return cc_min
+
+    mp = max_point - margin*2
+    p = point - margin
+
+    return int(round( (cc_max-cc_min)*(1.0-float(p)/float(mp)) + cc_min))
+
+def get_midi_note(max_point, point, margin, midi_note_array ):
+
+    if point <= margin:
+        return midi_note_array[0]
+    if point >= (max_point - margin):
+        return midi_note_array[ len(midi_note_array)-1 ]
+
+    mp = max_point - margin*2
+    p = point - margin
+    one_note_width = mp / len(midi_note_array)
+    index = int(math.floor(p/one_note_width))
+
+    return midi_note_array[index]
+
+
+
 def midi_send_server(args):
     # Write command, send data
     if not args['device']:
@@ -144,15 +175,34 @@ if __name__ == '__main__':
             print("ready to receive messages.")
             #device_id = int(args['device'])
 
+            MIDI_ID = 1
+            CC_NO = 20
+            OBJECT_1ST = "cup"
+            OBJECT_2ND = "cell phone"
+            OBJECT_3RD = "bottle"
+            OBJECT_4TH = "frisbee"
+
+            OBJECT_1ST_DOWN_MIDI_NOTE = 0
+            OBJECT_1ST_UP_MIDI_NOTE = 0
+
+            SCREEN_MARGIN = 60
+
+            NOISE_VOLUME = 0
+
+
             while True:
                 mtext, mtype = mq.receive(type=1)
-                print(mtext.decode("utf-8"))
+                #print(mtext.decode("utf-8"))
                 ret, screen_w, screen_h = parse_receive_data(mtext.decode("utf-8"))
-                print("SCREEN_WIDTH:", screen_w)
-                print("SCREEN_HEIGHT:", screen_h)
+                #print("SCREEN_WIDTH:", screen_w)
+                #print("SCREEN_HEIGHT:", screen_h)
 
-                MIDI_ID = 1
-                CC_NO = 20
+                # Send MIDI UP NOTE 
+                if OBJECT_1ST_DOWN_MIDI_NOTE != 0 and OBJECT_1ST_UP_MIDI_NOTE == 0:
+                    midi_send( MIDI_ID, [0x80, OBJECT_1ST_DOWN_MIDI_NOTE, 100])
+                    OBJECT_1ST_UP_MIDI_NOTE = OBJECT_1ST_DOWN_MIDI_NOTE 
+
+                find_2nd_object = False
 
                 for r in ret:
                     print(r.label_name)
@@ -161,20 +211,77 @@ if __name__ == '__main__':
                     #center_x = r.left
                     #center_y = r.top
 
-                    if r.label_name == "cell phone":
-                        print("cell phone find")
-                        print("center_x:", center_x)
-                        print("center_y:", center_y)
-                        MIDI_NOTE = int(40.0 + round(48.0*(center_x/screen_w)))
-                        CC_DATA = int(round(127*(1.0-float(center_y)/float(screen_h))))
-                        print("MIDI_NOTE:", MIDI_NOTE)
-                        print("CC_DATA:", CC_DATA)
+                    if r.label_name == OBJECT_1ST:
+                        # X Position is assigned MIDI NOTE.
+                        '''
+                        MAIN_MIDI_ARRAY = [108, 109, 110, 111, 112, 113, 114, 115]
+                        one_note_width = screen_w / len(MAIN_MIDI_ARRAY)
+                        index = math.floor(center_x/one_note_width)
+                        midi_note = MAIN_MIDI_ARRAY[index]
+						'''
+                        midi_note = get_midi_note(screen_w, center_x, SCREEN_MARGIN, [108, 109, 110, 111, 112, 113, 114, 115])
 
-                        midi_send( MIDI_ID, [0x90, MIDI_NOTE, MIDI_NOTE])
-                        # CC
-                        if CC_DATA >= 0:
-                            midi_send( MIDI_ID, [185, CC_NO, CC_DATA])
+                        if OBJECT_1ST_DOWN_MIDI_NOTE != midi_note:
+                            midi_send( MIDI_ID, [0x90, midi_note, 100])
+                            OBJECT_1ST_DOWN_MIDI_NOTE = midi_note
+                            OBJECT_1ST_UP_MIDI_NOTE = 0 
+                            print("down midi:" + str(midi_note) + " " + OBJECT_1ST)
+                        else:
+                            print("no push midi." +  OBJECT_1ST)
 
+                        # Y Position is assigned CC MIDI 20
+                        CC_NO = 20
+                        CC_DATA = get_midi_cc(screen_h, center_y, SCREEN_MARGIN)
+                        print("CC_DATA:" + str(CC_DATA))
+                        midi_send( MIDI_ID, [185, CC_NO, CC_DATA])
+
+                    elif r.label_name == OBJECT_2ND:
+                        find_2nd_object = True
+                    	# X Position is assigned CC MIDI 21 -> Analog Freq
+                        CC_NO = 21
+                        CC_DATA = get_midi_cc(screen_w, center_x, SCREEN_MARGIN)
+                        midi_send( MIDI_ID, [185, CC_NO, CC_DATA])
+
+                    	# Y Position is assigned CC MIDI 22
+                        CC_NO = 22
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
+
+                    elif r.label_name == OBJECT_3RD:
+
+                    	# Y Position is assigned CC MIDI 24
+                        CC_NO = 24
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
+
+                    	# X Position is assigned CC MIDI 26
+                        CC_NO = 26
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
+
+                    elif r.label_name == OBJECT_4TH:
+
+                    	# Y Position is assigned CC MIDI 25
+                        CC_NO = 25
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
+
+                    	# X Position is assigned CC MIDI 26
+                        CC_NO = 27
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
+
+                # NOISE CHANNEL VOLUME
+                if find_2nd_object == True:
+                	NOISE_VOLUME += 2
+                	if NOISE_VOLUME > 127:
+                		NOISE_VOLUME = 127
+                else:
+                	NOISE_VOLUME -= 2
+                	if NOISE_VOLUME < 0:
+                		NOISE_VOLUME = 0
+
+                CC_NO = 23
+                midi_send( MIDI_ID, [185, CC_NO, NOISE_VOLUME])
+
+
+
+                time.sleep(0.016)
 
             # Write command, send data
             '''
