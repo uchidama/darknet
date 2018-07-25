@@ -177,10 +177,10 @@ if __name__ == '__main__':
 
             MIDI_ID = 1
             CC_NO = 20
-            OBJECT_1ST = "cup"
-            OBJECT_2ND = "cell phone"
-            OBJECT_3RD = "bottle"
-            OBJECT_4TH = "frisbee"
+            OBJECT_1ST = "banana"
+            OBJECT_2ND = "apple"
+            OBJECT_3RD = "orange"
+            #OBJECT_4TH = "frisbee"
 
             OBJECT_1ST_DOWN_MIDI_NOTE = 0
             OBJECT_1ST_UP_MIDI_NOTE = 0
@@ -248,16 +248,6 @@ if __name__ == '__main__':
 
                     elif r.label_name == OBJECT_3RD:
 
-                    	# Y Position is assigned CC MIDI 24
-                        CC_NO = 24
-                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
-
-                    	# X Position is assigned CC MIDI 26
-                        CC_NO = 26
-                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
-
-                    elif r.label_name == OBJECT_4TH:
-
                     	# Y Position is assigned CC MIDI 25
                         CC_NO = 25
                         midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
@@ -265,6 +255,18 @@ if __name__ == '__main__':
                     	# X Position is assigned CC MIDI 26
                         CC_NO = 27
                         midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
+
+                    '''
+                    elif r.label_name == OBJECT_4TH:
+
+                    	# Y Position is assigned CC MIDI 24
+                        CC_NO = 24
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_h, center_y, SCREEN_MARGIN)])
+
+                    	# X Position is assigned CC MIDI 26
+                        CC_NO = 26
+                        midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
+					'''
 
                 # NOISE CHANNEL VOLUME
                 if find_2nd_object == True:
