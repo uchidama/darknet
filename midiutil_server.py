@@ -20,7 +20,10 @@ class DetectedObject():
         self.right = 0
         self.top = 0
         self.bottom = 0
+        self.area = 0
 
+    def __lt__(self, other):
+    	return self.area > other.area
 
 def parse_receive_data(receive_str):
     ret_array = []
@@ -51,8 +54,25 @@ def parse_receive_data(receive_str):
             ret_array.append(d)
         i += 1
 
+    for r in ret_array:
+    	r.area = (r.right-r.left)*(r.bottom-r.top)
 
-    return (ret_array, screen_w, screen_h )
+    ret_array = sorted(ret_array)
+
+    for r in ret_array:
+    	print("{},{}:".format(r.label_name, r.area))
+
+    # return only one object name  
+    ret_dict = {}
+    for r in ret_array:
+    	if (r.label_name in ret_dict) == False: 
+    		ret_dict[r.label_name] = r
+
+    print("ret_dict:{} ".format(len(ret_dict)))
+    for key, value in ret_dict.items():
+    	print(key)
+
+    return (ret_dict, screen_w, screen_h )
 
 
 
@@ -177,10 +197,10 @@ if __name__ == '__main__':
 
             MIDI_ID = 1
             CC_NO = 20
-            OBJECT_1ST = "banana"
-            OBJECT_2ND = "apple"
-            OBJECT_3RD = "orange"
-            #OBJECT_4TH = "frisbee"
+            OBJECT_1ST = "person"
+            OBJECT_2ND = "banana"
+            OBJECT_3RD = "apple"
+            OBJECT_4TH = "orange"
 
             OBJECT_1ST_DOWN_MIDI_NOTE = 0
             OBJECT_1ST_UP_MIDI_NOTE = 0
@@ -204,7 +224,7 @@ if __name__ == '__main__':
 
                 find_2nd_object = False
 
-                for r in ret:
+                for key, r in ret.items():
                     print(r.label_name)
                     center_x = (r.left + r.right)/2
                     center_y = (r.top + r.bottom)/2
@@ -256,7 +276,6 @@ if __name__ == '__main__':
                         CC_NO = 27
                         midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
 
-                    '''
                     elif r.label_name == OBJECT_4TH:
 
                     	# Y Position is assigned CC MIDI 24
@@ -266,7 +285,6 @@ if __name__ == '__main__':
                     	# X Position is assigned CC MIDI 26
                         CC_NO = 26
                         midi_send( MIDI_ID, [185, CC_NO, get_midi_cc(screen_w, center_x, SCREEN_MARGIN)])
-					'''
 
                 # NOISE CHANNEL VOLUME
                 if find_2nd_object == True:
